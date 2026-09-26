@@ -1,0 +1,43 @@
+# === Secretos: NUNCA commitear ===
+.env
+**/.env
+*.pem
+*.key
+
+# === Cache / dependencias ===
+node_modules/
+api-server/node_modules/
+api/node_modules/
+tools/node_modules/
+cache-img/
+api-server/cache-img/
+api/cache-img/
+*.log
+npm-debug.log*
+
+# === Firebase (no se usa: deploy es VPS) ===
+functions/
+.firebase/
+.firebaserc
+firebase.json
+
+# === Carpetas fuente/duplicadas (no van al repo deployable) ===
+api-server/
+dist/
+kanadac/
+fotos/
+drive-upload/
+b/
+tools/
+_backup_otro_proyecto/
+
+# === OS / editores ===
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+*.swp
+
+# === Restos locales no deployables ===
+catalog-report.json
+*.pdf

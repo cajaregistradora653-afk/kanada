@@ -1,0 +1,7 @@
+# Nunca hornear secretos ni basura local en la imagen.
+node_modules/
+npm-debug.log*
+.env
+.env.local
+cache-img/
+*.log

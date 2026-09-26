@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1"/>
+<title>Kanada Tienda — Estilo Premium</title>
+<meta name="description" content="Kanada — ropa y accesorios. Tema claro premium inspirado en tiendas de lujo."/>
+<link rel="icon" href="logo-kanada.png" type="image/png"/>
+<link rel="stylesheet" href="styles.css?v=4"/>
+</head>
+<body>
+
+<div class="ann">
+  <div class="row"><span>🚚 ENVÍOS GRATIS POR COMPRAS <b>DESDE $300.000</b></span></div>
+</div>
+<div class="ann-sub"><span>Paga a cuotas</span><span>100% Original</span></div>
+
+<header class="site" id="siteHeader">
+  <div class="nav">
+    <img class="logo" src="logo-kanada.png" alt="Kanada"/>
+    <div class="links" id="navLinks">
+      <button data-cat="TODOS" class="active">Nuevo</button>
+      <button data-cat="HOMBRE">Hombre</button>
+      <button data-cat="MUJER">Mujer</button>
+      <button data-cat="OFERTAS" class="hot">🔥 Ofertas</button>
+    <button data-cat="ACCESORIOS">Accesorios</button>
+      <button data-cat="PERFUMES">Perfumes</button>
+      <button data-cat="TODOS" class="hot" onclick="document.getElementById('productos').scrollIntoView({behavior:'smooth'})">🔥 Hot sale</button>
+    </div>
+    <div class="icons">
+      <button class="icon-btn" onclick="alert('Búsqueda demo: usa los filtros de abajo')">⌕ <span style="font-size:1rem">Buscar</span></button>
+      <button class="icon-btn" id="openCart">👜 Carrito <span class="cart-n" id="cartCount">0</span></button>
+    </div>
+  </div>
+  <div class="mobile-cats" id="mobileCats">
+    <button data-cat="TODOS" class="active">Todos</button>
+    <button data-cat="OFERTAS">Ofertas</button>
+    <button data-cat="HOMBRE">Hombre</button>
+    <button data-cat="MUJER">Mujer</button>
+    <button data-cat="ACCESORIOS">Accesorios</button>
+    <button data-cat="PERFUMES">Perfumes</button>
+  </div>
+</header>
+
+<section class="hero rv in">
+  <video class="bg" src="hero.mp4" poster="hero-poster.jpg" alt="Kanada premium" autoplay muted loop playsinline preload="metadata"></video>
+  <div class="hero-cta">
+    <p>Kanada · Boyacá Colombia</p>
+    <h1>Estilo sin límites</h1>
+    <a class="btn btn-light" href="#productos">Discover now</a>
+  </div>
+</section>
+
+<section class="agro-banner rv in" data-cat="OFERTAS">
+  <img src="hot-sale.jpg" alt="Ofertas Kanada"/>
+  <div class="agro-info"><p>ahora disponible</p><h2>UNDERGOLD</h2><span>Explorar →</span></div>
+</section>
+
+<section class="sec">
+  <div class="sec-head rv"><h2>Comprar por categoría</h2><a href="#productos">Colecciones</a></div>
+  <div class="trio">
+    <button class="tri rv" data-cat="HOMBRE"><img src="cat-hombre.jpg" alt="Hombre"/><div class="tri-info"><h3>Hombre</h3><span>Explorar →</span></div></button>
+    <button class="tri rv rv-d1" data-cat="ACCESORIOS"><img src="cat-accesorios.jpg" alt="Accesorios"/><div class="tri-info"><h3>Accesorios</h3><span>Explorar →</span></div></button>
+    <button class="tri rv rv-d2" data-cat="MUJER"><img src="cat-mujer.jpg" alt="Mujer"/><div class="tri-info"><h3>Mujer</h3><span>Explorar →</span></div></button>
+  </div>
+</section>
+
+<div class="filters rv">
+  <label>Precio max: <input type="range" id="maxPrice" min="10000" max="500000" step="10000" value="500000"/> <b id="maxPriceLabel">$ 500.000</b></label>
+  <label><input type="checkbox" id="onlyStock"/> Solo con stock</label>
+  <label>Talla: <select id="sizeFilter"><option>Todas</option><option>S</option><option>M</option><option>L</option><option>XL</option><option>XXL</option></select></label>
+  <label>🔎 <input type="search" id="searchInput" placeholder="Buscar referencia..." style="border:1px solid var(--line2);padding:.7rem 1.2rem;font-size:1.1rem;letter-spacing:.06rem;border-radius:0;background:#fff;min-width:18rem"/></label>
+  <label>Sub: <select id="subFilter"><option value="TODAS">Todas</option></select></label>
+  <select id="sortFilter"><option value="default">Orden por defecto</option><option value="precio_asc">Menor precio</option><option value="precio_desc">Mayor precio</option></select>
+  <button id="clearFilters" class="btn btn-line" style="padding:.8rem 1.8rem">Limpiar filtros</button>
+  <span id="prodCount">0 productos</span>
+</div>
+
+<main class="sec" id="productos">
+  <div class="sec-head rv"><h2 id="productsTitle">Prendas de edición limitada</h2></div>
+  <div class="tabs rv" id="tabs">
+    <button data-cat="TODOS" class="active">Ver todo</button>
+    <button data-cat="HOMBRE">Lanzamientos hombre</button>
+    <button data-cat="MUJER">Lanzamientos mujer</button>
+    <button data-cat="OFERTAS">🔥 Ver ofertas</button>
+  </div>
+  <div class="grid" id="productsGrid"></div>
+</main>
+
+<div class="marquee"><div class="mtrack" id="mtrack"><span><b>Discover</b> <i>—</i> Summit <i>—</i> <b>Discover</b> <i>—</i> Summit <i>—</i>&nbsp;</span></div></div>
+
+<section class="best">
+  <div class="best-inner">
+    <div class="sec-head rv"><h2>Men best seller</h2><a href="#productos">Descubrir ahora</a></div>
+    <div class="grid" id="bestGrid"></div>
+    <div class="trust">
+      <div class="tcard rv"><div style="font-size:2.4rem">🚚</div><h4>Envíos gratis a nivel nacional</h4><p>4 a 8 días hábiles</p></div>
+      <div class="tcard rv rv-d1"><div style="font-size:2.4rem">🛡️</div><h4>30 días para cambios y garantías</h4><p>Compra con tranquilidad</p></div>
+      <div class="tcard rv rv-d2"><div style="font-size:2.4rem">🔒</div><h4>Pagos 100% seguros y a crédito</h4><p>Addi · Contraentrega</p></div>
+    </div>
+  </div>
+</section>
+
+<footer>
+  <div class="foot">
+    <div><h5>Kanada</h5><p>📍 Sogamoso-Boyacá Cra 13 #12-96</p><p>📍 Duitama-Boyacá Cra 19 #14-80</p><p>2025 Kanada Tienda · Boyacá, Colombia</p></div>
+    <div><h5>Legal</h5><a href="#">Política de datos</a><a href="#">Política de envíos</a><a href="#">Servicio al cliente</a></div>
+    <div><h5>Pedidos</h5><a href="#">Seguimiento</a><a href="#">Cambios y garantías</a><a href="#">Guía de tallas</a></div>
+    <div><h5>Ayuda</h5><a href="https://wa.me/573227436671" target="_blank" rel="noopener">WhatsApp</a></div>
+  </div>
+</footer>
+
+<!-- MODAL PRODUCTO -->
+<div class="pmodal-overlay" id="pOverlay">
+  <div class="pmodal" role="dialog" aria-modal="true">
+    <button class="pmodal-x" id="pClose">✕</button>
+    <div class="pmodal-grid">
+      <div class="pgal">
+        <div class="zoom-wrap" id="pZoom"><img id="pMain" src="" alt=""/></div>
+        <div class="pthumbs" id="pThumbs"></div>
+      </div>
+      <div class="pinfo">
+        <div class="pcat" id="pCat"></div>
+        <h3 id="pName"></h3>
+        <div class="pref" id="pRef"></div>
+        <div class="pmodel" id="pModel"></div>
+        <div class="pprice" id="pPrice"></div>
+        <div class="psizes" id="pSizes"></div>
+        <div class="pqty"><button id="pMinus">−</button><span id="pQtyV">1</span><button id="pPlus">+</button></div>
+        <button class="btn btn-dark" id="pAdd">Añadir al carrito</button>
+        <a class="btn btn-line" id="pWa" target="_blank" rel="noopener">Pedir por WhatsApp</a>
+        <div class="pdesc" id="pDesc"></div>
+        <div class="prel"><h4>Relacionados</h4><div id="pRel"></div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"></div>
+<aside class="drawer" id="drawer">
+  <div class="dhead"><span id="drawerCount">Mi carrito (0)</span><button class="icon-btn" id="closeCart">✕</button></div>
+  <div class="dbody" id="drawerBody"></div>
+  <div class="dfoot" id="drawerFoot"></div>
+</aside>
+<a class="wa-float" href="https://wa.me/573227436671" target="_blank" rel="noopener" aria-label="Chat en WhatsApp"><svg viewBox="0 0 448 512" aria-hidden="true"><path d="M380.9 97.1C339 55.1 283.2 32 223.9 32c-122.4 0-222 99.6-222 222 0 39.1 10.2 77.3 29.6 111L0 480l117.7-30.9c32.4 17.7 68.9 27 106.1 27h.1c122.3 0 224.1-99.6 224.1-222 0-59.3-25.2-115-67.1-157zm-157 341.6c-33.2 0-65.7-8.9-94-25.7l-6.7-4-69.8 18.3L72 359.2l-4.4-7c-18.5-29.4-28.2-63.3-28.2-98.2 0-101.7 82.8-184.5 184.6-184.5 49.3 0 95.6 19.2 130.4 54.1 34.8 34.9 56.2 81.2 56.1 130.5 0 101.8-84.9 184.6-186.6 184.6zm101.2-138.2c-5.5-2.8-32.8-16.2-37.9-18-5.1-1.9-8.8-2.8-12.5 2.8-3.7 5.6-14.3 18-17.6 21.8-3.2 3.7-6.5 4.2-12 1.4-32.6-16.3-54-29.1-75.5-66-5.7-9.8 5.7-9.1 16.3-32.4 1.8-4 0-7.4-1-10.4-1-2.8-8.8-21.2-12-28.7-3.2-7.7-6.4-6.6-8.8-6.7-2.3-.2-5-.2-7.7-.2-2.7 0-7.1 1-10.8 5-3.7 4-14.2 13.9-14.2 33.9 0 19.9 14.6 39.2 16.6 41.9 2 2.8 28.7 43.8 69.5 61.4 9.7 4.2 17.3 6.7 23.2 8.6 9.7 3.1 18.6 2.7 25.6 2.4 7.8-1.2 23.9-9.8 27.2-19.2 3.4-9.5 3.4-17.6 2.4-19.2-.9-1.7-3.7-2.8-9.2-5.6z"/></svg></a>
+
+<script src="app.js?v=12"></script>
+</body>
+</html>

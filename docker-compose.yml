@@ -1,0 +1,22 @@
+services:
+  kanada:
+    build: .
+    ports:
+      - "8080:80"
+    depends_on:
+      - api
+    restart: unless-stopped
+
+  # API Drive en vivo (catálogo 100% Drive).
+  # Requiere .env en la raíz junto a este archivo (ver .env.example).
+  # La carpeta Drive debe estar compartida con el service-account como Lector.
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    env_file:
+      - path: .env
+        required: false
+    expose:
+      - "3000"
+    restart: unless-stopped
