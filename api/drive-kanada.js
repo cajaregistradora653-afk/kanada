@@ -36,9 +36,10 @@ function isConfigured() {
 function parsePriceStr(s) {
   if (!s) return null;
   // Quita duplicados tipo $110(1).000 ANTES de extraer (igual que build-catalog.mjs)
-  const m = String(s).replace(/\([^)]*\)/g, "").match(/\$([\d.]+)/);
+  // Tolera comas: $110,000 / $110.000 / 110000
+  const m = String(s).replace(/\([^)]*\)/g, "").match(/\$([\d.,]+)/);
   if (!m) return null;
-  const d = m[1].replace(/\./g, "");
+  const d = m[1].replace(/[.,]/g, "");
   return /^\d+$/.test(d) ? parseInt(d, 10) : null;
 }
 function cleanRef(s) {
@@ -79,50 +80,58 @@ function parseFolderName(name) {
   return { cat: catN, sub: subN, ref, price, sizes };
 }
 
+function parseLinesMeta(paras) {
+  // Núcleo compartido: sirve para .docx (párrafos XML) y Google Docs/.txt (líneas de texto).
+  // Blindaje: dos puntos opcionales, PRECIO tolera $/COP/comas/espacios, DESCRIPCION sin colon.
+  const norm = (paras || []).map((x) => String(x || "").replace(/\s+/g, " ").trim()).filter(Boolean);
+  const get = (re) => norm.find((x) => re.test(x)) || null;
+  const val = (re) => { const p = get(re); return p ? p.replace(re, "$1").trim() : null; };
+  let price = null;
+  const pp = get(/^PRECIO\s*:?/i);
+  if (pp) {
+    // Extrae el primer bloque numérico aunque venga con ruido: "$ COP 380.000", "$OP 380.000", "COP 150,000"
+    const m = pp.replace(/\([^)]*\)/g, " ").match(/(\d[\d().,]*)/);
+    if (m) { const d = m[1].replace(/\([^)]*\)/g, "").replace(/[.,]/g, ""); if (/^\d+$/.test(d)) price = parseInt(d, 10); }
+  }
+  const di = norm.findIndex((x) => /^DESCRIPCI[OÓ]N\s*:?/i.test(x));
+  const ti = norm.findIndex((x) => /^DETALLES DEL PRODUCTO\s*:?/i.test(x));
+  const META_RE = /^(PRECIO|TALLA|STOCK|CAT|SUB|CATEGOR[ÍI]A|MODELO)\s*:?/i;
+  let desc = null;
+  if (di !== -1) {
+    const end = ti !== -1 ? ti : norm.length;
+    // Fuera líneas de metadatos aunque vengan dentro del rango DESCRIPCION:
+    // solo texto comercial; la ficha técnica vive en sus campos.
+    desc = norm.slice(di, end).filter((x) => !META_RE.test(x))
+      .join(" ").replace(/^DESCRIPCI[OÓ]N\s*:?\s*/i, "").trim().slice(0, 2000) || null;
+  }
+  const details = ti !== -1 ? norm.slice(ti + 1).filter((x) => !/^(PRECIO|TALLA|STOCK|CAT|SUB|CATEGOR[ÍI]A|MODELO)\s*:?/i.test(x)).slice(0, 20) : [];
+  const tallaRaw = val(/^TALLA\s*:?\s*(.+)$/i);
+  const stockRaw = val(/^STOCK\s*:?\s*(.+)$/i);
+  const catRaw = val(/^(?:CAT|CATEGOR[ÍI]A)\s*:?\s*(.+)$/i);
+  const subRaw = val(/^SUB\s*:?\s*(.+)$/i);
+  const { sizes: tallaSizes, stockBySize } = parseTalla(tallaRaw);
+  const model = parseModel(norm.join("\n"));
+  if (desc && model) {
+    // Si la frase del modelo también está en la descripción, quitarla de ahí:
+    // se muestra una sola vez, en su línea dedicada.
+    desc = desc.replace(/[^.]*?modelo[^.]*?talla\s+[A-Za-z]{1,4}[^.]*?mide\s+[\d.,]+\s*m[^.]*\./gi, " ").replace(/\s+/g, " ").trim() || null;
+  }
+  return {
+    price, desc, details,
+    sizes: tallaSizes, stockBySize, model,
+    stock: stockRaw && /^\d+$/.test(stockRaw.replace(/[.,]/g, "")) ? parseInt(stockRaw.replace(/[.,]/g, ""), 10) : null,
+    cat: catRaw ? catRaw.toUpperCase().slice(0, 30) : null,
+    sub: subRaw || null,
+  };
+}
+
 function parseDocxMeta(buffer) {
   try {
     const zip = new AdmZip(buffer);
     const xml = zip.readAsText("word/document.xml", "utf8");
     const paras = [...xml.matchAll(/<w:p[\s>][\s\S]*?<\/w:p>/g)]
       .map((m) => m[0].replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim()).filter(Boolean);
-    const get = (re) => paras.find((x) => re.test(x)) || null;
-    const val = (re) => { const p = get(re); return p ? p.replace(re, "$1").trim() : null; };
-    let price = null;
-    const pp = get(/^PRECIO:/i);
-    if (pp) {
-      const m = pp.match(/PRECIO:\s*\$?(?:COP)?\s*\$?\s*([\d().]+)/i);
-      if (m) { const d = m[1].replace(/\([^)]*\)/g, "").replace(/\./g, ""); if (/^\d+$/.test(d)) price = parseInt(d, 10); }
-    }
-    const di = paras.findIndex((x) => /^DESCRIPCI[OÓ]N:/i.test(x));
-    const ti = paras.findIndex((x) => /^DETALLES DEL PRODUCTO:/i.test(x));
-    const META_RE = /^(PRECIO|TALLA|STOCK|CAT|SUB|CATEGOR[ÍI]A|MODELO):/i;
-    let desc = null;
-    if (di !== -1) {
-      const end = ti !== -1 ? ti : paras.length;
-      // Fuera líneas de metadatos aunque vengan dentro del rango DESCRIPCION:
-      // solo texto comercial; la ficha técnica vive en sus campos.
-      desc = paras.slice(di, end).filter((x) => !META_RE.test(x))
-        .join(" ").replace(/^DESCRIPCI[OÓ]N:\s*/i, "").trim().slice(0, 2000) || null;
-    }
-    const details = ti !== -1 ? paras.slice(ti + 1).filter((x) => !/^(PRECIO|TALLA|STOCK|CAT|SUB|CATEGOR[ÍI]A|MODELO):/i.test(x)).slice(0, 20) : [];
-    const tallaRaw = val(/^TALLA:\s*(.+)$/i);
-    const stockRaw = val(/^STOCK:\s*(.+)$/i);
-    const catRaw = val(/^(?:CAT|CATEGOR[ÍI]A):\s*(.+)$/i);
-    const subRaw = val(/^SUB:\s*(.+)$/i);
-    const { sizes: tallaSizes, stockBySize } = parseTalla(tallaRaw);
-    const model = parseModel(paras.join("\n"));
-    if (desc && model) {
-      // Si la frase del modelo también está en la descripción, quitarla de ahí:
-      // se muestra una sola vez, en su línea dedicada.
-      desc = desc.replace(/[^.]*?modelo[^.]*?talla\s+[A-Za-z]{1,4}[^.]*?mide\s+[\d.,]+\s*m[^.]*\./gi, " ").replace(/\s+/g, " ").trim() || null;
-    }
-    return {
-      price, desc, details,
-      sizes: tallaSizes, stockBySize, model,
-      stock: stockRaw && /^\d+$/.test(stockRaw) ? parseInt(stockRaw, 10) : null,
-      cat: catRaw ? catRaw.toUpperCase().slice(0, 30) : null,
-      sub: subRaw || null,
-    };
+    return parseLinesMeta(paras);
   } catch { return {}; }
 }
 // TALLA:1XS,1S,1M,2L,1XL -> número antes = unidades (0 o ausente = sin stock).
@@ -205,7 +214,7 @@ function natCmp(a, b) {
   }
   return 0;
 }
-function mkProduct({ ref, price, desc, details, cat, sub, sizes, images, stock, stockBySize, model, src }) {
+function mkProduct({ ref, price, desc, details, cat, sub, sizes, images, stock, stockBySize, model, src, metaFile }) {
   const name = String(ref).replace(/[-_]+/g, " ").replace(/\s+/g, " ").trim();
   // Sin STOCK: explícito, el stock global = suma de tallas (filtros "con stock" reales)
   const units = stockBySize ? Object.values(stockBySize).reduce((a, n) => a + (n || 0), 0) : null;
@@ -218,26 +227,51 @@ function mkProduct({ ref, price, desc, details, cat, sub, sizes, images, stock, 
     img: images[0], images,
     tag: cat === "OFERTAS" ? "HOT" : null,
     stock: stock ?? units ?? 99,
-    src,
+    src, metaFile: metaFile || null,
   };
 }
-async function readDocxMeta(drive, fileId) {
+// Lee ficha de producto: .docx, Google Doc nativo, .doc viejo y .txt.
+// Blindaje ante el error del screenshot (Documento de Google ignorado).
+async function readDocxMeta(drive, fileId, mimeType) {
   try {
+    const mt = String(mimeType || "");
+    if (mt.includes("application/vnd.google-apps.document")) {
+      // Google Doc nativo -> exportar como texto y parsear con el mismo núcleo
+      const exp = await drive.files.export({ fileId, mimeType: "text/plain" }, { responseType: "arraybuffer" });
+      return parseLinesMeta(Buffer.from(exp.data).toString("utf8").split(/\r?\n/)) || {};
+    }
+    if (mt === "text/plain") {
+      const bin = await drive.files.get({ fileId, alt: "media" }, { responseType: "arraybuffer" });
+      return parseLinesMeta(Buffer.from(bin.data).toString("utf8").split(/\r?\n/)) || {};
+    }
     const bin = await drive.files.get({ fileId, alt: "media" }, { responseType: "arraybuffer" });
     return parseDocxMeta(Buffer.from(bin.data)) || {};
   } catch { return {}; }
 }
+function pickMetaFile(files) {
+  const list = files || [];
+  // Prioridad: .docx > Google Doc > .doc/.txt (evita que un txt viejo tape al docx)
+  const rank = (f) => {
+    const m = String(f.mimeType || ""), n = String(f.name || "").toLowerCase();
+    if (m.includes("officedocument.wordprocessingml") || n.endsWith(".docx")) return 0;
+    if (m.includes("application/vnd.google-apps.document")) return 1;
+    if (n.endsWith(".doc") || m.includes("msword")) return 2;
+    return 3;
+  };
+  return [...list].sort((a, b) => rank(a) - rank(b))[0] || null;
+}
 async function collect(drive, folderId, folderName, depth, ctx, out) {
   const [imgRes, docxRes, kidRes] = await Promise.all([
     drive.files.list({ q: `'${folderId}' in parents and (mimeType contains 'image/') and trashed = false`, fields: "files(id, name, thumbnailLink)", orderBy: "name", pageSize: 100 }),
-    drive.files.list({ q: `'${folderId}' in parents and mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' and trashed = false`, fields: "files(id, name)", pageSize: 1 }),
+    drive.files.list({ q: `'${folderId}' in parents and (mimeType = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' or mimeType = 'application/vnd.google-apps.document' or mimeType = 'application/msword' or mimeType = 'text/plain') and trashed = false`, fields: "files(id, name, mimeType)", pageSize: 5 }),
     drive.files.list({ q: `'${folderId}' in parents and mimeType = 'application/vnd.google-apps.folder' and trashed = false`, fields: "files(id, name)", orderBy: "name", pageSize: 100 }),
   ]);
   const imgs = (imgRes.data.files || []).filter((f) => f.id).sort(natCmp);
   for (const f of imgs) if (f.thumbnailLink) thumbMap.set(f.id, f.thumbnailLink);
   const kids = (kidRes.data.files || []).filter((f) => f.id);
-  const docx = (docxRes.data.files || [])[0];
-  const meta = docx ? await readDocxMeta(drive, docx.id) : {};
+  const docx = pickMetaFile(docxRes.data.files || []);
+  const meta = docx ? await readDocxMeta(drive, docx.id, docx.mimeType) : {};
+  const metaFile = docx ? docx.name : null;
   const src = `drive/${folderId}`;
 
   if (imgs.length && (depth === 0 || kids.length === 0)) {
@@ -250,9 +284,9 @@ async function collect(drive, folderId, folderName, depth, ctx, out) {
         cat: meta.cat || base.cat, sub: meta.sub || base.sub,
         sizes: meta.sizes || base.sizes,
         images: imgs.map((f) => `/api/drive-image?fileId=${f.id}`),
-        stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src,
+        stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src, metaFile,
       }));
-    } else if (depth > 0 && imgs.every((f) => /^\d+\.\w+$/.test(f.name))) {
+    } else if (depth > 0 && imgs.every((f) => /^\d+(\.\w+)?$/.test((f.name || "").trim()))) {
       // Galería: la carpeta entera es 1 producto (nombre = carpeta padre).
       // La talla puede venir de la carpeta actual (Boxers_/L/1.webp) o heredada.
       // La SUB también puede venir de la carpeta actual (PERFUMES/Hombre_/...) si no se heredó.
@@ -264,7 +298,7 @@ async function collect(drive, folderId, folderName, depth, ctx, out) {
         cat: meta.cat || ctx.cat, sub: meta.sub || ctx.sub,
         sizes: meta.sizes || (lvlSize ? [lvlSize] : ["UNICA"]),
         images: imgs.map((f) => `/api/drive-image?fileId=${f.id}`),
-        stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src,
+        stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src, metaFile,
       }));
     } else if (depth > 0) {
       // Nivel SUB con varios productos: 1 archivo = 1 producto (igual que build-catalog.mjs)
@@ -278,7 +312,7 @@ async function collect(drive, folderId, folderName, depth, ctx, out) {
           cat: meta.cat || ctx.cat, sub: lvlSub,
           sizes: meta.sizes || [lvlSize || tallaFromName(f.name) || "UNICA"],
           images: [`/api/drive-image?fileId=${f.id}`],
-          stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src,
+          stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src, metaFile,
         }));
       }
     } else {
@@ -290,7 +324,7 @@ async function collect(drive, folderId, folderName, depth, ctx, out) {
         cat: meta.cat || base.cat, sub: meta.sub || base.sub,
         sizes: meta.sizes || base.sizes,
         images: imgs.map((g) => `/api/drive-image?fileId=${g.id}`),
-        stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src,
+        stock: meta.stock, stockBySize: meta.stockBySize || null, model: meta.model || null, src, metaFile,
       }));
     }
   }
@@ -307,9 +341,9 @@ async function collect(drive, folderId, folderName, depth, ctx, out) {
 }
 // priceOf/cleanRef locales para carpetas anidadas (misma regla que prepare-drive-upload)
 function priceOf(s) {
-  const m = String(s || "").replace(/\([^)]*\)/g, "").match(/\$([\d.]+)/);
+  const m = String(s || "").replace(/\([^)]*\)/g, "").match(/\$([\d.,]+)/);
   if (!m) return { price: null };
-  const d = m[1].replace(/\./g, "");
+  const d = m[1].replace(/[.,]/g, "");
   return /^\d+$/.test(d) ? { price: parseInt(d, 10) } : { price: null };
 }
 
@@ -447,4 +481,4 @@ async function fetchImageBuffer(fileId, wOpt) {
   return { buffer, contentType };
 }
 
-module.exports = { isConfigured, parseFolderName, parsePriceStr, cleanRef, parseSizes, parseDocxMeta, fetchAllProducts, fetchImageBuffer, natCmp, parseTalla, parseModel };
+module.exports = { isConfigured, parseFolderName, parsePriceStr, cleanRef, parseSizes, parseDocxMeta, parseLinesMeta, pickMetaFile, fetchAllProducts, fetchImageBuffer, natCmp, parseTalla, parseModel };
